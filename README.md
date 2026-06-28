@@ -136,21 +136,29 @@ GEMINI_API_KEY=your_google_gemini_api_key
 
 ---
 
-## 🏃‍♂️ Running the Project
+## 🏃‍♂️ How to Run This Website
 
-To start the application, you'll need to run both the frontend and backend servers.
+To start the application, you can run the frontend, backend, and admin components using the following commands:
 
-**Start the Backend Server:**
+**Run the Backend Server (Node/Express):**
 ```bash
 cd server
 npm run dev
 ```
 
-**Start the Frontend Server:**
+**Run the Frontend (React):**
 ```bash
 cd client
 npm run dev
 ```
+
+**Run the Admin Dashboard:**
+```bash
+cd admin
+npm run dev
+```
+
+*(Note: You can also run both the frontend and backend concurrently from the root directory using `npm run dev`)*
 
 ---
 
