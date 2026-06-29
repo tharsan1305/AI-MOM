@@ -6,18 +6,17 @@ const settingsSchema = new mongoose.Schema({
   registrationEnabled: { type: Boolean, default: true },
   paymentsEnabled: { type: Boolean, default: false },
   imageGenEnabled: { type: Boolean, default: true },
-  apiKeys: {
-    openai: { type: String, default: '' },
-    gemini: { type: String, default: '' },
-    claude: { type: String, default: '' },
-    replicate: { type: String, default: '' }
+  rateLimiterEnabled: { type: Boolean, default: true },
+  featureFlags: {
+    enableIllustratedTemplates: { type: Boolean, default: true },
+    enablePdfExport: { type: Boolean, default: false }
   },
   globalLimits: {
     defaultPromptLimitDaily: { type: Number, default: 3 },
     maxUploadSizeMB: { type: Number, default: 10 },
   },
   branding: {
-    companyName: { type: String, default: 'MeetGraph AI' },
+    companyName: { type: String, default: 'MinuteCraft' },
     logoUrl: { type: String, default: '' },
     bannerUrl: { type: String, default: '' },
   },

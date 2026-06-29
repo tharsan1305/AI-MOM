@@ -74,7 +74,7 @@ const HistoryPage = () => {
           </div>
           <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No projects found</h3>
           <p className="text-slate-500 mb-6">You haven't created any infographics yet, or none match your search.</p>
-          <Link to="/create" className="btn-primary inline-flex">Create New Infographic</Link>
+          <Link to="/create-report" className="btn-primary inline-flex">Create New Infographic</Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

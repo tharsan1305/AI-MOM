@@ -31,7 +31,7 @@ const LandingPage = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-500"></span>
               </span>
-              MeetGraph AI 2.0 is Live
+              MinuteCraft 2.0 is Live
             </motion.div>
             
             <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-slate-900 dark:text-white">
@@ -59,7 +59,7 @@ const LandingPage = () => {
       <section id="features" className="py-24 bg-slate-50 dark:bg-slate-900/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Why Choose MeetGraph AI?</h2>
+            <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Why Choose MinuteCraft?</h2>
             <p className="text-xl text-slate-600 dark:text-slate-400">Everything you need to visualize your meetings</p>
           </div>
 

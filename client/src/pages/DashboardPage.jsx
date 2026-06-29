@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, Clock, Download, Image as ImageIcon, FileText, ArrowRight, Zap, User } from 'lucide-react';
+import { Plus, Clock, Download, Image as ImageIcon, FileText, ArrowRight, Zap, User, Sparkles, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { handleRazorpayCheckout } from '../utils/razorpay';
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [stats, setStats] = useState({ totalInfographics: 0, totalDownloads: 0, recentProjects: [] });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,6 +33,14 @@ const DashboardPage = () => {
     { title: 'Saved Templates', value: 4, icon: <FileText size={24} className="text-accent-500" />, bg: 'bg-accent-100 dark:bg-accent-900/30' },
   ];
 
+  const handleUpgrade = async () => {
+    // 29 is a placeholder amount for Pro tier.
+    await handleRazorpayCheckout('pro', 29, (newPlan) => {
+      // Update local context
+      setUser({ ...user, plan: newPlan });
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
@@ -39,10 +48,38 @@ const DashboardPage = () => {
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Welcome back, {user?.name?.split(' ')[0]}! 👋</h1>
           <p className="text-slate-500 mt-1">Here's what's happening with your projects today.</p>
         </div>
-        <Link to="/create" className="btn-primary flex items-center justify-center gap-2">
+        <Link to="/create-report" className="btn-primary flex items-center justify-center gap-2">
           <Plus size={20} /> New Infographic
         </Link>
       </div>
+
+      {user?.plan === 'free' && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10 bg-gradient-to-r from-slate-900 to-indigo-900 text-white rounded-2xl p-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden"
+        >
+          {/* Decorative shapes */}
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+          <div className="absolute -bottom-12 right-20 w-24 h-24 bg-primary-500/20 rounded-full blur-xl"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="px-2 py-1 rounded bg-white/20 text-xs font-bold uppercase tracking-wider">Free Plan</span>
+              <span className="text-sm text-indigo-200 flex items-center gap-1"><ShieldCheck size={14} /> Basic limits applied</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold mb-1">Upgrade to Pro for unlimited reports</h2>
+            <p className="text-indigo-200 text-sm md:text-base">Get access to premium templates, HD exports, and remove watermark.</p>
+          </div>
+          
+          <div className="relative z-10 flex flex-col items-center sm:items-end shrink-0 gap-2">
+            <button onClick={handleUpgrade} className="bg-gradient-primary text-white py-3 px-8 rounded-xl font-bold shadow-glow-primary hover:scale-105 transition-transform flex items-center gap-2">
+              <Sparkles size={18} /> Upgrade to Pro — $29/mo
+            </button>
+            <span className="text-xs text-indigo-300 bg-black/20 px-2 py-1 rounded">Test Mode</span>
+          </div>
+        </motion.div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -89,7 +126,7 @@ const DashboardPage = () => {
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No projects yet</h3>
                 <p className="text-slate-500 mb-6">Create your first AI infographic from your meeting notes.</p>
-                <Link to="/create" className="btn-primary inline-flex">Get Started</Link>
+                <Link to="/create-report" className="btn-primary inline-flex">Get Started</Link>
               </div>
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -121,7 +158,7 @@ const DashboardPage = () => {
         <div className="space-y-6">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Quick Actions</h2>
           <div className="card p-6 space-y-4">
-            <Link to="/create" className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-primary-500 hover:bg-primary-50 transition-all dark:border-slate-700 dark:hover:border-primary-500 dark:hover:bg-primary-900/20 group">
+            <Link to="/create-report" className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-primary-500 hover:bg-primary-50 transition-all dark:border-slate-700 dark:hover:border-primary-500 dark:hover:bg-primary-900/20 group">
               <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <Plus size={20} />
               </div>
@@ -157,7 +194,7 @@ const DashboardPage = () => {
             <p className="text-sm text-primary-100 mb-4">
               For best results, make sure your meeting notes clearly mention action items and assignees. The AI will automatically structure them into a neat timeline.
             </p>
-            <Link to="/create" className="text-sm font-bold flex items-center gap-1 hover:text-primary-200 transition-colors">
+            <Link to="/create-report" className="text-sm font-bold flex items-center gap-1 hover:text-primary-200 transition-colors">
               Try it now <ArrowRight size={16} />
             </Link>
           </div>

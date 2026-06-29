@@ -1,6 +1,8 @@
 const cloudinary = require('../config/cloudinary');
 const User = require('../models/User');
 const Project = require('../models/Project');
+const Subscription = require('../models/Subscription');
+const Payment = require('../models/Payment');
 const bcrypt = require('bcryptjs');
 
 // @desc    Get current user profile
@@ -35,7 +37,7 @@ const updateProfile = async (req, res) => {
 
     if (avatarBase64) {
       const uploadRes = await cloudinary.uploader.upload(avatarBase64, {
-        folder: 'meetgraph/avatars',
+        folder: 'minutecraft/avatars',
         transformation: [{ width: 200, height: 200, crop: 'fill' }],
       });
       user.avatar = uploadRes.secure_url;
@@ -83,4 +85,45 @@ const getStats = async (req, res) => {
   }
 };
 
-module.exports = { getProfile, updateProfile, changePassword, getStats };
+// @desc    Get billing and payment history
+// @route   GET /api/user/billing
+const getBillingDetails = async (req, res) => {
+  try {
+    const subscription = await Subscription.findOne({ userId: req.user._id });
+    const payments = await Payment.find({ userId: req.user._id }).sort({ createdAt: -1 }).limit(10);
+    
+    res.json({
+      success: true,
+      subscription,
+      payments
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Cancel subscription
+// @route   POST /api/user/subscription/cancel
+const cancelSubscription = async (req, res) => {
+  try {
+    // In a real integration, you would call Razorpay's API to cancel the subscription here
+    // e.g. await razorpay.subscriptions.cancel(subscription.stripeSubscriptionId);
+
+    const subscription = await Subscription.findOne({ userId: req.user._id });
+    if (subscription) {
+      subscription.status = 'canceled';
+      subscription.cancelAtPeriodEnd = true;
+      await subscription.save();
+    }
+
+    const user = await User.findById(req.user._id);
+    user.plan = 'free';
+    await user.save();
+
+    res.json({ success: true, message: 'Subscription canceled', plan: 'free' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { getProfile, updateProfile, changePassword, getStats, getBillingDetails, cancelSubscription };

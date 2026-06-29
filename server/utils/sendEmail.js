@@ -12,7 +12,8 @@ const sendEmail = async ({ to, subject, html }) => {
   });
 
   await transporter.sendMail({
-    from: `"MeetGraph AI" <${process.env.EMAIL_USER}>`,
+    // TODO: replace with real SMTP domain before production
+    from: `"MinuteCraft" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     html,

@@ -11,27 +11,23 @@ const projectSchema = new mongoose.Schema({
   },
   template: {
     type: String,
-    enum: ['corporate', 'timeline', 'mind_map', 'flowchart', 'modern_business', 'linkedin'],
-    default: 'corporate'
+    default: 'meeting_report'
   },
   status: { type: String, enum: ['processing', 'completed', 'failed'], default: 'processing' },
   imageUrl: { type: String, default: '' },
   shareToken: { type: String, unique: true, sparse: true },
   metadata: {
-    meetingTitle: String,
+    title: String,
     date: String,
-    attendees: [String],
-    discussionPoints: [String],
-    keyOutcomes: [String],
-    actionItems: [{
+    summary: String,
+    decisions: [String],
+    action_items: [{
       task: String,
-      assignee: String,
-      deadline: String,
-      status: { type: String, default: 'pending' }
+      owner: String,
+      deadline: String
     }],
     risks: [String],
-    nextSteps: [String],
-    statusUpdates: [String],
+    next_steps: [String],
   },
 }, { timestamps: true });
 

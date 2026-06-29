@@ -7,6 +7,11 @@ const infographicSchema = new mongoose.Schema({
   template: { type: String, required: true }, // 'Meeting Minutes', 'Timeline', etc.
   theme: { type: String, default: 'modern' }, // 'corporate', 'modern', 'minimal', 'dark'
   
+  // AI Provider used for this generation
+  aiProvider: { type: String, default: 'gemini' },
+  aiModel: { type: String },
+
+  
   // The structured extracted data from OpenAI
   data: {
     title: { type: String },

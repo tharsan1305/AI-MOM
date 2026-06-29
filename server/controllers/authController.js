@@ -124,13 +124,13 @@ const forgotPassword = async (req, res) => {
     const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
     const html = `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-        <h2 style="color:#6366f1">MeetGraph AI — Password Reset</h2>
+        <h2 style="color:#6366f1">MinuteCraft — Password Reset</h2>
         <p>You requested a password reset. Click the button below to reset your password:</p>
         <a href="${resetUrl}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin:16px 0">Reset Password</a>
         <p style="color:#666;font-size:12px">This link expires in 30 minutes. If you didn't request this, ignore this email.</p>
       </div>`;
 
-    await sendEmail({ to: user.email, subject: 'MeetGraph AI — Password Reset', html });
+    await sendEmail({ to: user.email, subject: 'MinuteCraft — Password Reset', html });
     res.json({ success: true, message: 'Password reset email sent' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

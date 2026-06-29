@@ -32,7 +32,7 @@ const Navbar = () => {
                 </svg>
               </div>
               <span className="font-display font-bold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-primary">
-                MeetGraph<span className="text-slate-900 dark:text-white"> AI</span>
+                Minute<span className="text-slate-900 dark:text-white">Craft</span>
               </span>
             </Link>
           </div>
@@ -43,7 +43,7 @@ const Navbar = () => {
               <>
                 <Link to="/#features" className="text-slate-600 hover:text-primary-600 font-medium transition-colors dark:text-slate-300 dark:hover:text-primary-400">Features</Link>
                 <Link to="/#how-it-works" className="text-slate-600 hover:text-primary-600 font-medium transition-colors dark:text-slate-300 dark:hover:text-primary-400">How it Works</Link>
-                <Link to="/#pricing" className="text-slate-600 hover:text-primary-600 font-medium transition-colors dark:text-slate-300 dark:hover:text-primary-400">Pricing</Link>
+                <Link to="/pricing" className="text-slate-600 hover:text-primary-600 font-medium transition-colors dark:text-slate-300 dark:hover:text-primary-400">Pricing</Link>
               </>
             )}
             
@@ -116,7 +116,7 @@ const Navbar = () => {
               <>
                 <Link to="/#features" className="text-lg font-medium p-2" onClick={() => setIsMenuOpen(false)}>Features</Link>
                 <Link to="/#how-it-works" className="text-lg font-medium p-2" onClick={() => setIsMenuOpen(false)}>How it Works</Link>
-                <Link to="/#pricing" className="text-lg font-medium p-2" onClick={() => setIsMenuOpen(false)}>Pricing</Link>
+                <Link to="/pricing" className="text-lg font-medium p-2" onClick={() => setIsMenuOpen(false)}>Pricing</Link>
                 <div className="border-t border-slate-200 dark:border-slate-700 my-2 pt-4 flex flex-col gap-3">
                   <Link to="/login" className="btn-secondary text-center" onClick={() => setIsMenuOpen(false)}>Sign In</Link>
                   <Link to="/register" className="btn-primary text-center" onClick={() => setIsMenuOpen(false)}>Get Started</Link>

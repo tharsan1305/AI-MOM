@@ -11,7 +11,8 @@ const seedAdmin = async () => {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('MongoDB Connected...');
 
-    const adminEmail = 'admin@meetgraph.ai';
+    // TODO: replace with real SMTP domain before production
+    const adminEmail = 'admin@minutecraft.ai';
     const adminPassword = 'Admin@123';
 
     // Check if superadmin already exists

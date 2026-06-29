@@ -60,7 +60,7 @@ const AdminLoginPage = () => {
                   type="email"
                   required
                   className="input-field pl-10"
-                  placeholder="admin@meetgraph.ai"
+                  placeholder="admin@minutecraft.ai"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />

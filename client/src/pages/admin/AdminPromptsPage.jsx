@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Search, Trash2, Download, ExternalLink, Loader2 } from 'lucide-react';
+import { Search, Loader2, CheckCircle, XCircle, Code, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 
 const AdminPromptsPage = () => {
   const [prompts, setPrompts] = useState([]);
@@ -9,11 +9,20 @@ const AdminPromptsPage = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
+  
+  // Filters
+  const [statusFilter, setStatusFilter] = useState('');
+  const [providerFilter, setProviderFilter] = useState('');
+
+  // Expanded row state
+  const [expandedId, setExpandedId] = useState(null);
 
   const fetchPrompts = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/api/admin/prompts', { params: { page, limit: 12, search } });
+      const res = await axios.get('/api/admin/prompts', { 
+        params: { page, limit: 15, search, status: statusFilter, provider: providerFilter } 
+      });
       setPrompts(res.data.prompts);
       setPagination(res.data.pagination);
     } catch (error) {
@@ -24,86 +33,178 @@ const AdminPromptsPage = () => {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchPrompts(), 300);
+    const timer = setTimeout(() => fetchPrompts(), 400);
     return () => clearTimeout(timer);
-  }, [page, search]);
+  }, [page, search, statusFilter, providerFilter]);
 
-  const deletePrompt = async (id) => {
-    if (!window.confirm('Delete this prompt and associated image record?')) return;
-    try {
-      const res = await axios.delete(`/api/admin/prompts/${id}`);
-      if (res.data.success) {
-        fetchPrompts();
-        toast.success('Record deleted');
-      }
-    } catch (error) {
-      toast.error('Failed to delete record');
-    }
+  const toggleExpand = (id) => {
+    if (expandedId === id) setExpandedId(null);
+    else setExpandedId(id);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      {/* Header & Filters */}
+      <div className="p-6 border-b border-slate-200 dark:border-slate-700 space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
         <div className="relative max-w-md w-full">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search prompts..."
+            placeholder="Search raw notes..."
             className="input-field pl-10 py-2 text-sm"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
-        <button className="btn-secondary py-2 px-4 flex items-center gap-2">
-          <Download size={18} /> Export CSV
-        </button>
+        
+        <div className="flex gap-3">
+          <select 
+            value={providerFilter}
+            onChange={(e) => { setProviderFilter(e.target.value); setPage(1); }}
+            className="input-field py-2 text-sm w-auto min-w-[140px]"
+          >
+            <option value="">All Providers</option>
+            <option value="gemini">Gemini</option>
+            <option value="groq">Groq</option>
+            <option value="openai">OpenAI</option>
+            <option value="claude">Claude</option>
+          </select>
+
+          <select 
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            className="input-field py-2 text-sm w-auto min-w-[140px]"
+          >
+            <option value="">All Statuses</option>
+            <option value="success">Success</option>
+            <option value="failed">Failed</option>
+          </select>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary-500" size={40} /></div>
-      ) : prompts.length === 0 ? (
-        <div className="text-center py-20 text-slate-500">No prompt history found.</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {prompts.map(prompt => (
-            <div key={prompt._id} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm flex flex-col">
-              <div className="aspect-video bg-slate-100 dark:bg-slate-900 relative group">
-                <img src={prompt.imageUrl} alt={prompt.prompt} className="w-full h-full object-contain" loading="lazy" />
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                  <a href={prompt.imageUrl} target="_blank" rel="noreferrer" className="p-2 bg-white rounded-full text-slate-900 hover:scale-110 transition-transform">
-                    <ExternalLink size={18} />
-                  </a>
-                  <button onClick={() => deletePrompt(prompt._id)} className="p-2 bg-red-500 rounded-full text-white hover:scale-110 transition-transform">
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-              <div className="p-4 flex flex-col flex-1">
-                <p className="text-sm text-slate-700 dark:text-slate-300 font-medium line-clamp-3 mb-3 flex-1" title={prompt.prompt}>
-                  "{prompt.prompt}"
-                </p>
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-700 mt-auto">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-semibold text-slate-900 dark:text-white">{prompt.userId?.name || 'Unknown User'}</span>
-                    <span className="text-xs text-slate-500">{new Date(prompt.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-slate-500">{prompt.userId?.email || 'N/A'}</span>
-                    <span className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-400">{prompt.model}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left whitespace-nowrap">
+          <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 font-medium">
+            <tr>
+              <th className="px-6 py-4">Timestamp</th>
+              <th className="px-6 py-4">User</th>
+              <th className="px-6 py-4">AI Engine</th>
+              <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4 text-right">Payload</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+            {loading ? (
+              <tr><td colSpan="5" className="px-6 py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary-500" size={24} /></td></tr>
+            ) : prompts.length === 0 ? (
+              <tr><td colSpan="5" className="px-6 py-10 text-center text-slate-500">No prompt logs found.</td></tr>
+            ) : (
+              prompts.map(prompt => (
+                <React.Fragment key={prompt._id}>
+                  <tr className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${expandedId === prompt._id ? 'bg-slate-50 dark:bg-slate-800/50' : ''}`}>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-slate-900 dark:text-white">{new Date(prompt.createdAt).toLocaleDateString()}</span>
+                        <span className="text-xs text-slate-500">{new Date(prompt.createdAt).toLocaleTimeString()}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{prompt.userId?.name || 'Unknown / Guest'}</span>
+                        <span className="text-xs text-slate-500">{prompt.userId?.email || 'N/A'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-900/30 w-max">
+                          {prompt.aiProvider}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono w-max">
+                          {prompt.aiModel}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {prompt.status === 'success' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold capitalize tracking-wide bg-green-100 text-green-700 dark:bg-green-900/30">
+                          <CheckCircle size={14} /> Success
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold capitalize tracking-wide bg-red-100 text-red-700 dark:bg-red-900/30">
+                          <XCircle size={14} /> Failed
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => toggleExpand(prompt._id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                      >
+                        {expandedId === prompt._id ? (
+                          <><ChevronUp size={16} /> Hide details</>
+                        ) : (
+                          <><Code size={16} /> View payload</>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                  
+                  {/* Expanded Row */}
+                  {expandedId === prompt._id && (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-b-4 border-slate-200 dark:border-slate-700">
+                        
+                        {prompt.status === 'failed' && (
+                          <div className="mb-4 p-4 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300 rounded-xl border border-red-100 dark:border-red-900/50 font-mono text-sm">
+                            <strong className="block mb-1 font-sans">Error Message:</strong>
+                            {prompt.errorMessage || 'Unknown error occurred'}
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          
+                          {/* Raw Notes Column */}
+                          <div className="space-y-2">
+                            <h4 className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                              <FileText size={16} /> Raw Input Notes
+                            </h4>
+                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm font-mono text-slate-600 dark:text-slate-400 whitespace-pre-wrap max-h-96 overflow-y-auto">
+                              {prompt.rawNotes}
+                            </div>
+                          </div>
+
+                          {/* JSON Output Column */}
+                          <div className="space-y-2">
+                            <h4 className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                              <Code size={16} /> Structured JSON Output
+                            </h4>
+                            <div className="bg-slate-900 text-emerald-400 rounded-xl p-4 text-sm font-mono whitespace-pre-wrap max-h-96 overflow-y-auto">
+                              {prompt.jsonOutput ? JSON.stringify(prompt.jsonOutput, null, 2) : '// No JSON output generated'}
+                            </div>
+                          </div>
+
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* Pagination */}
       {pagination.pages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-8">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn-secondary py-1.5 px-3 text-sm disabled:opacity-50">Prev</button>
-          <span className="text-sm text-slate-500">Page {page} of {pagination.pages}</span>
-          <button onClick={() => setPage(p => Math.min(pagination.pages, p + 1))} disabled={page === pagination.pages} className="btn-secondary py-1.5 px-3 text-sm disabled:opacity-50">Next</button>
+        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <span className="text-sm text-slate-500">
+            Showing {(page - 1) * 15 + 1} to {Math.min(page * 15, pagination.total)} of {pagination.total} entries
+          </span>
+          <div className="flex gap-2">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn-secondary py-1.5 px-3 text-sm disabled:opacity-50">Prev</button>
+            <button onClick={() => setPage(p => Math.min(pagination.pages, p + 1))} disabled={page === pagination.pages} className="btn-secondary py-1.5 px-3 text-sm disabled:opacity-50">Next</button>
+          </div>
         </div>
       )}
     </div>

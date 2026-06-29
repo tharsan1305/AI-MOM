@@ -1,4 +1,7 @@
 const User = require('../models/User');
+const Infographic = require('../models/Infographic');
+const LoginHistory = require('../models/LoginHistory');
+const AuditLog = require('../models/AuditLog');
 
 // @desc    Get all users
 // @route   GET /api/admin/users
@@ -21,16 +24,32 @@ const getUsers = async (req, res) => {
       .select('-password')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean(); // Lean for mutability
       
     const total = await User.countDocuments(query);
 
+    // Enrich users with total reports and last active date
+    const enrichedUsers = await Promise.all(users.map(async (user) => {
+      const [totalReports, lastLogin] = await Promise.all([
+        Infographic.countDocuments({ userId: user._id }),
+        LoginHistory.findOne({ userId: user._id }).sort({ createdAt: -1 }).select('createdAt').lean()
+      ]);
+
+      return {
+        ...user,
+        totalReports,
+        lastActive: lastLogin ? lastLogin.createdAt : user.updatedAt
+      };
+    }));
+
     res.json({
       success: true,
-      users,
+      users: enrichedUsers,
       pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit) }
     });
   } catch (error) {
+    console.error('Error fetching users:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -39,15 +58,22 @@ const getUsers = async (req, res) => {
 // @route   PUT /api/admin/users/:id
 const updateUser = async (req, res) => {
   try {
-    const { name, email, role, plan, status } = req.body;
-    const user = await User.findById(req.params.id);
+    const { name, email, role, plan, status, reason } = req.body;
     
+    if (!reason) {
+      return res.status(400).json({ success: false, message: 'Reason is required for auditing purposes.' });
+    }
+
+    const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     
     // Prevent changing superadmin role unless by another superadmin
     if (user.role === 'superadmin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ success: false, message: 'Cannot modify superadmin' });
     }
+
+    // Capture before state for audit log
+    const beforeValue = { name: user.name, role: user.role, plan: user.plan, status: user.status };
 
     user.name = name || user.name;
     user.email = email || user.email;
@@ -56,9 +82,24 @@ const updateUser = async (req, res) => {
     user.status = status || user.status;
 
     await user.save({ validateBeforeSave: false });
+    
+    const afterValue = { name: user.name, role: user.role, plan: user.plan, status: user.status };
+
+    // Create Audit Log
+    await AuditLog.create({
+      action: 'UPDATE_USER',
+      adminId: req.user._id,
+      adminName: req.user.name,
+      targetType: 'User',
+      targetId: user._id.toString(),
+      beforeValue,
+      afterValue,
+      reason
+    });
 
     res.json({ success: true, user });
   } catch (error) {
+    console.error('Error updating user:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -67,6 +108,12 @@ const updateUser = async (req, res) => {
 // @route   DELETE /api/admin/users/:id
 const deleteUser = async (req, res) => {
   try {
+    const { reason } = req.body; // Sent in payload
+
+    if (!reason) {
+      return res.status(400).json({ success: false, message: 'Reason is required for auditing purposes.' });
+    }
+
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     
@@ -74,12 +121,27 @@ const deleteUser = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Cannot delete superadmin' });
     }
 
+    const beforeValue = { status: user.status };
+
     // Soft delete
     user.status = 'deleted';
     await user.save({ validateBeforeSave: false });
 
+    // Create Audit Log
+    await AuditLog.create({
+      action: 'DELETE_USER',
+      adminId: req.user._id,
+      adminName: req.user.name,
+      targetType: 'User',
+      targetId: user._id.toString(),
+      beforeValue,
+      afterValue: { status: 'deleted' },
+      reason
+    });
+
     res.json({ success: true, message: 'User deleted successfully' });
   } catch (error) {
+    console.error('Error deleting user:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -114,7 +176,6 @@ const getUserDetails = async (req, res) => {
 
     const Image = require('../models/Image');
     const Payment = require('../models/Payment');
-    const LoginHistory = require('../models/LoginHistory');
 
     const [images, payments, logins] = await Promise.all([
       Image.find({ userId: user._id }).sort({ createdAt: -1 }).limit(10),

@@ -3,13 +3,16 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import MaintenanceBanner from './components/MaintenanceBanner';
 
 // Lazy load user pages
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const MinuteCraftLanding = lazy(() => import('./components/landing/MinuteCraftLanding'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const PricingPage = lazy(() => import('./pages/PricingPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
-const CreatePage = lazy(() => import('./pages/CreatePage'));
+const CreateReportPage = lazy(() => import('./pages/CreateReportPage'));
 const BrandKitPage = lazy(() => import('./pages/BrandKitPage'));
 const HistoryPage = lazy(() => import('./pages/HistoryPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -19,7 +22,8 @@ const ImageGeneratorPage = lazy(() => import('./pages/ImageGeneratorPage'));
 const ImageHistoryPage = lazy(() => import('./pages/ImageHistoryPage'));
 const TemplateGalleryPage = lazy(() => import('./pages/TemplateGalleryPage'));
 
-// Lazy load Admin imports
+// Lazy load layouts
+const AppLayout = lazy(() => import('./layouts/AppLayout'));
 const AdminLayout = lazy(() => import('./layouts/AdminLayout'));
 const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
@@ -62,22 +66,27 @@ const StandardLayout = ({ children }) => {
 function App() {
   return (
     <Router>
+      <MaintenanceBanner />
       <Routes>
         {/* Standard User Routes */}
-        <Route path="/" element={<StandardLayout><LandingPage /></StandardLayout>} />
+        <Route path="/" element={<div className="min-h-screen flex flex-col"><Navbar /><main className="flex-grow"><Suspense fallback={<div className="min-h-[50vh] flex items-center justify-center">Loading...</div>}><MinuteCraftLanding /></Suspense></main></div>} />
         <Route path="/login" element={<StandardLayout><LoginPage /></StandardLayout>} />
         <Route path="/register" element={<StandardLayout><RegisterPage /></StandardLayout>} />
         <Route path="/forgot-password" element={<StandardLayout><ForgotPasswordPage /></StandardLayout>} />
+        <Route path="/pricing" element={<StandardLayout><PricingPage /></StandardLayout>} />
         
-        <Route path="/dashboard" element={<StandardLayout><ProtectedRoute><DashboardPage /></ProtectedRoute></StandardLayout>} />
-        <Route path="/create" element={<StandardLayout><ProtectedRoute><CreatePage /></ProtectedRoute></StandardLayout>} />
-        <Route path="/templates" element={<StandardLayout><ProtectedRoute><TemplateGalleryPage /></ProtectedRoute></StandardLayout>} />
-        <Route path="/brand-kit" element={<StandardLayout><ProtectedRoute><BrandKitPage /></ProtectedRoute></StandardLayout>} />
-        <Route path="/history" element={<StandardLayout><ProtectedRoute><HistoryPage /></ProtectedRoute></StandardLayout>} />
-        <Route path="/profile" element={<StandardLayout><ProtectedRoute><ProfilePage /></ProtectedRoute></StandardLayout>} />
-        <Route path="/infographic/:id" element={<StandardLayout><ProtectedRoute><InfographicViewPage /></ProtectedRoute></StandardLayout>} />
-        <Route path="/image-generator" element={<StandardLayout><ProtectedRoute><ImageGeneratorPage /></ProtectedRoute></StandardLayout>} />
-        <Route path="/image-history" element={<StandardLayout><ProtectedRoute><ImageHistoryPage /></ProtectedRoute></StandardLayout>} />
+        {/* Authenticated Routes with Sidebar */}
+        <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/create-report" element={<CreateReportPage />} />
+          <Route path="/templates" element={<TemplateGalleryPage />} />
+          <Route path="/brand-kit" element={<BrandKitPage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/infographic/:id" element={<InfographicViewPage />} />
+          <Route path="/image-generator" element={<ImageGeneratorPage />} />
+          <Route path="/image-history" element={<ImageHistoryPage />} />
+        </Route>
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={

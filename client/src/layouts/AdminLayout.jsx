@@ -70,7 +70,7 @@ const AdminLayout = () => {
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-700">
           <Link to="/admin" className="flex items-center gap-2 font-bold text-lg text-primary-600 dark:text-primary-400">
             <Shield size={24} />
-            MeetGraph Admin
+            MinuteCraft Admin
           </Link>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden text-slate-500">
             <X size={20} />

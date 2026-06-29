@@ -1,6 +1,21 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const { GoogleGenAI } = require('@google/genai');
+const { extractTextFromImage } = require('../services/ocrService');
+
+// Use memory storage for OCR since we don't need to persist the image
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images are allowed'));
+    }
+  }
+});
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -81,6 +96,26 @@ router.post('/generate-image', async (req, res) => {
   } catch (error) {
     console.error('Image Generation Error:', error);
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// OCR Endpoint for handwritten notes
+router.post('/ocr', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No image uploaded' });
+    }
+
+    const text = await extractTextFromImage(req.file.buffer, req.file.mimetype);
+    
+    if (!text) {
+      return res.status(400).json({ success: false, message: 'Could not extract text from the image.' });
+    }
+
+    res.json({ success: true, text });
+  } catch (error) {
+    console.error('OCR Route Error:', error);
+    res.status(500).json({ success: false, message: error.message || 'OCR processing failed.' });
   }
 });
 

@@ -5,14 +5,15 @@ const { upload } = require('../middleware/upload');
 const {
   generateInfographic, getHistory, getProject,
   deleteProject, shareProject, getSharedProject, saveImageUrl,
-  parseMeetingNotes, saveInfographic
+  saveInfographic
 } = require('../controllers/infographicController');
+const { analyzeMeetingNotes } = require('../controllers/analyzeController');
 
 // Public
 router.get('/share/:token', getSharedProject);
 
 // Protected
-router.post('/parse', protect, parseMeetingNotes);
+router.post('/analyze', protect, analyzeMeetingNotes);
 router.post('/save', protect, saveInfographic);
 router.post('/generate', protect, upload.single('file'), generateInfographic);
 router.get('/history', protect, getHistory);

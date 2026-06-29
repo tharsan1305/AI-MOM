@@ -17,6 +17,10 @@ const { auditLogMiddleware } = require('../middleware/auditLog');
 const { getSystemStatus } = require('../controllers/adminSystemController');
 const { exportUsersReport, exportPromptsReport, exportAnalyticsExcel } = require('../controllers/adminReportController');
 const { getOverview, getTokenAnalytics, getProviderAnalytics, getTopicAnalytics, getCostTrends } = require('../controllers/adminAnalyticsController');
+const { getProviders, updateProvider, activateProvider, testProvider } = require('../controllers/adminProviderController');
+const { getGeneratedReports } = require('../controllers/adminGeneratedReportsController');
+const { getSubscriptions } = require('../controllers/adminSubscriptionController');
+const { getAuditLogs } = require('../controllers/adminAuditLogController');
 
 // All routes below this line require admin role
 router.use(adminAuth);
@@ -52,9 +56,21 @@ router.delete('/users/:id', deleteUser);
 router.get('/prompts', getPrompts);
 router.delete('/prompts/:id', deletePrompt);
 
+// Generated Reports
+router.get('/generated-reports', getGeneratedReports);
+
 // Settings
 router.get('/settings', getSettings);
 router.put('/settings', updateSettings);
+
+// API Providers
+router.get('/providers', getProviders);
+router.put('/providers/:name', updateProvider);
+router.post('/providers/:name/activate', activateProvider);
+router.post('/providers/:name/test', testProvider);
+
+// Subscriptions
+router.get('/subscriptions', getSubscriptions);
 
 // Plans
 router.get('/plans', getPlans);
@@ -69,5 +85,8 @@ router.put('/payments/:id', updatePaymentStatus);
 // Notifications
 router.get('/notifications', getNotifications);
 router.put('/notifications/:id/read', markAsRead);
+
+// Audit Logs
+router.get('/audit-logs', getAuditLogs);
 
 module.exports = router;

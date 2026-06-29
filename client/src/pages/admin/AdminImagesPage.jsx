@@ -1,86 +1,185 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Loader2, Trash2, Download, ExternalLink } from 'lucide-react';
+import { Loader2, ExternalLink, Calendar, Search, Filter, FileText, Download } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const AdminImagesPage = () => {
-  const [images, setImages] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Filters and Pagination
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, pages: 1 });
+  const [search, setSearch] = useState('');
+  const [userIdFilter, setUserIdFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
-  useEffect(() => {
-    const fetchImages = async () => {
-      try {
-        const res = await axios.get('/api/admin/prompts'); // Using existing endpoint
-        if (res.data.success) {
-          setImages(res.data.prompts);
-        }
-      } catch (error) {
-        toast.error('Failed to load images');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchImages();
-  }, []);
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this image permanently?')) return;
+  const fetchReports = async () => {
+    setLoading(true);
     try {
-      const res = await axios.delete(`/api/admin/prompts/${id}`);
+      const res = await axios.get('/api/admin/generated-reports', {
+        params: { page, limit: 10, search, userId: userIdFilter, startDate, endDate }
+      });
       if (res.data.success) {
-        toast.success('Image deleted');
-        setImages(images.filter(img => img._id !== id));
+        setReports(res.data.reports);
+        setUsers(res.data.users);
+        setPagination(res.data.pagination);
       }
     } catch (error) {
-      toast.error('Failed to delete image');
+      toast.error('Failed to fetch reports');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-primary-500" size={40} /></div>;
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      fetchReports();
+    }, 400);
+    return () => clearTimeout(delayDebounceFn);
+  }, [page, search, userIdFilter, startDate, endDate]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Generated Images</h2>
-        <p className="text-slate-500 dark:text-slate-400">Manage all AI generated images across the platform.</p>
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+      {/* Header & Filters */}
+      <div className="p-6 border-b border-slate-200 dark:border-slate-700 space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
+        <div className="relative max-w-sm w-full">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by title or template..."
+            className="input-field pl-10 py-2 text-sm"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          />
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-slate-400" />
+            <select 
+              value={userIdFilter} 
+              onChange={(e) => { setUserIdFilter(e.target.value); setPage(1); }}
+              className="input-field py-2 text-sm w-auto max-w-[150px]"
+            >
+              <option value="">All Users</option>
+              {users.map(u => (
+                <option key={u._id} value={u._id}>{u.email}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Calendar size={16} className="text-slate-400" />
+            <input 
+              type="date"
+              value={startDate}
+              onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+              className="input-field py-2 text-sm"
+              placeholder="Start Date"
+            />
+            <span className="text-slate-400">to</span>
+            <input 
+              type="date"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+              className="input-field py-2 text-sm"
+              placeholder="End Date"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {images.map(image => (
-          <div key={image._id} className="bg-white dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm group">
-            <div className="relative aspect-square">
-              <img src={image.imageUrl} alt={image.prompt} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                <a href={image.imageUrl} target="_blank" rel="noopener noreferrer" className="p-2 bg-white/20 hover:bg-white/40 rounded-full text-white backdrop-blur-sm transition-colors">
-                  <ExternalLink size={20} />
-                </a>
-                <button onClick={() => handleDelete(image._id)} className="p-2 bg-red-500/80 hover:bg-red-500 rounded-full text-white backdrop-blur-sm transition-colors">
-                  <Trash2 size={20} />
-                </button>
-              </div>
-            </div>
-            <div className="p-4">
-              <p className="text-sm text-slate-800 dark:text-slate-200 font-medium line-clamp-2" title={image.prompt}>
-                {image.prompt}
-              </p>
-              <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                <span>{image.userId?.email || 'Unknown'}</span>
-                <span>{new Date(image.createdAt).toLocaleDateString()}</span>
-              </div>
-              <div className="mt-1 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                <span className="uppercase">{image.model}</span>
-                <span>{image.resolution || image.size}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {images.length === 0 && (
-          <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-400">
-            No images generated yet.
-          </div>
-        )}
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left whitespace-nowrap">
+          <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 font-medium">
+            <tr>
+              <th className="px-6 py-4">Report Details</th>
+              <th className="px-6 py-4">Generated By</th>
+              <th className="px-6 py-4">AI Engine</th>
+              <th className="px-6 py-4">Date</th>
+              <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+            {loading ? (
+              <tr><td colSpan="6" className="px-6 py-10 text-center"><Loader2 className="animate-spin mx-auto text-primary-500" size={24} /></td></tr>
+            ) : reports.length === 0 ? (
+              <tr><td colSpan="6" className="px-6 py-10 text-center text-slate-500">No reports found matching your criteria.</td></tr>
+            ) : (
+              reports.map(report => (
+                <tr key={report._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 flex items-center justify-center shrink-0">
+                        <FileText size={20} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 dark:text-white max-w-[200px] truncate" title={report.title}>{report.title}</p>
+                        <p className="text-xs text-slate-500 capitalize">{report.template} Template</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-slate-700 dark:text-slate-300">{report.userId?.name || 'Unknown User'}</span>
+                      <span className="text-xs text-slate-500">{report.userId?.email || 'N/A'}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-1.5 flex-col">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-900/30 w-max">
+                        {report.aiProvider || 'gemini'}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {report.aiModel || 'default'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-slate-500">
+                    <div className="flex flex-col">
+                      <span>{new Date(report.createdAt).toLocaleDateString()}</span>
+                      <span className="text-xs">{new Date(report.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold capitalize bg-green-100 text-green-700 dark:bg-green-900/30">
+                      Completed
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <Link 
+                      to={`/infographic/${report._id}`}
+                      target="_blank"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors dark:bg-primary-900/30 dark:hover:bg-primary-900/50"
+                    >
+                      <ExternalLink size={14} /> View
+                    </Link>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
+
+      {/* Pagination */}
+      {pagination.pages > 1 && (
+        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <span className="text-sm text-slate-500">
+            Showing {(page - 1) * 10 + 1} to {Math.min(page * 10, pagination.total)} of {pagination.total} entries
+          </span>
+          <div className="flex gap-2">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn-secondary py-1.5 px-3 text-sm disabled:opacity-50">Prev</button>
+            <button onClick={() => setPage(p => Math.min(pagination.pages, p + 1))} disabled={page === pagination.pages} className="btn-secondary py-1.5 px-3 text-sm disabled:opacity-50">Next</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

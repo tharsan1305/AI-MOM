@@ -102,7 +102,7 @@ Follow these steps to get the project running locally.
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/tharsan1305/AI-MOM.git
+git clone https://github.com/PRODIGIT ACADEMY1305/AI-MOM.git
 
 # 2. Navigate to the project directory
 cd AI-MOM
@@ -224,5 +224,5 @@ Distributed under the **MIT License**. See `LICENSE` for more information.
 
 ## 👨‍💻 Author
 
-**Developer:** Tharsan  
-**GitHub:** [tharsan1305](https://github.com/tharsan1305)
+**Developer:** PRODIGIT ACADEMY  
+**GitHub:** [PRODIGIT ACADEMY1305](https://github.com/PRODIGIT ACADEMY1305)
