@@ -3,7 +3,8 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Users, Image as ImageIcon, FileText,
-  CreditCard, Settings, Bell, LogOut, Menu, X, Moon, Sun, Shield, BarChart2
+  CreditCard, Settings, Bell, LogOut, Menu, X, Moon, Sun, Shield, BarChart2,
+  FileText, MessageSquare, Activity, Download, Terminal, Server
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import axios from 'axios';
@@ -53,13 +54,18 @@ const AdminLayout = () => {
     { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={20} /> },
     { name: 'AI Analytics', path: '/admin/analytics', icon: <BarChart2 size={20} /> },
     { name: 'Users', path: '/admin/users', icon: <Users size={20} /> },
+    { name: 'Reports', path: '/admin/generated-reports', icon: <FileText size={20} /> },
     { name: 'Generated Images', path: '/admin/images', icon: <ImageIcon size={20} /> },
     { name: 'Prompt History', path: '/admin/prompts', icon: <FileText size={20} /> },
-    { name: 'Subscriptions', path: '/admin/plans', icon: <FileText size={20} /> },
-    { name: 'Payments', path: '/admin/payments', icon: <CreditCard size={20} /> },
-    { name: 'API Providers', path: '/admin/api-providers', icon: <Settings size={20} /> },
+    { name: 'API Providers', path: '/admin/api-providers', icon: <Server size={20} /> },
+    { name: 'Notifications', path: '/admin/notifications', icon: <Bell size={20} /> },
+    { name: 'Support Center', path: '/admin/support', icon: <MessageSquare size={20} /> },
+    { name: 'Security Center', path: '/admin/security', icon: <Shield size={20} /> },
+    { name: 'Audit Logs', path: '/admin/audit-logs', icon: <FileText size={20} /> },
+    { name: 'API Logs', path: '/admin/api-logs', icon: <Terminal size={20} /> },
+    { name: 'System Health', path: '/admin/system-health', icon: <Activity size={20} /> },
+    { name: 'Export Center', path: '/admin/exports', icon: <Download size={20} /> },
     { name: 'Settings', path: '/admin/settings', icon: <Settings size={20} /> },
-    { name: 'Audit Logs', path: '/admin/audit-logs', icon: <Shield size={20} /> },
   ];
 
   return (

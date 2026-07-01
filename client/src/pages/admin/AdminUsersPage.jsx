@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Search, Edit, Trash2, Ban, CheckCircle, MoreVertical, Loader2, FileText, Activity } from 'lucide-react';
+import { Search, Edit, Trash2, Ban, CheckCircle, MoreVertical, Loader2, FileText, Activity, Download } from 'lucide-react';
 
 const AdminUsersPage = () => {
   const [users, setUsers] = useState([]);
@@ -103,6 +103,27 @@ const AdminUsersPage = () => {
     }
   };
 
+  const handleExportAllUsersPDF = async () => {
+    const toastId = toast.loading('Generating PDF...');
+    try {
+      const res = await axios.get('/api/admin/reports/users-pdf', { responseType: 'blob' });
+      
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'all_users_report.pdf');
+      document.body.appendChild(link);
+      link.click();
+      
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('PDF generated successfully', { id: toastId });
+    } catch (error) {
+      toast.error('Failed to generate PDF', { id: toastId });
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
       {/* Header & Filters */}
@@ -118,7 +139,13 @@ const AdminUsersPage = () => {
           />
         </div>
         
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button 
+            onClick={handleExportAllUsersPDF} 
+            className="flex items-center gap-2 btn-primary py-2 px-4 text-sm whitespace-nowrap"
+          >
+            <Download size={16} /> Export All Users PDF
+          </button>
           <select 
             value={roleFilter} 
             onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}

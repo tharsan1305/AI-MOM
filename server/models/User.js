@@ -14,12 +14,48 @@ const userSchema = new mongoose.Schema({
   promptsToday: { type: Number, default: 0 },
   promptsResetDate: { type: Date },
   totalPrompts: { type: Number, default: 0 },
-  lastLogin: { type: Date },
   subscription: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan' },
   resetPasswordToken: { type: String },
   resetPasswordExpires: { type: Date },
   totalDownloads: { type: Number, default: 0 },
-  favoriteTemplates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Template' }]
+  favoriteTemplates: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Template' }],
+
+  // Login Tracking
+  lastLogin: { type: Date },
+  lastLogout: { type: Date },
+  loginCount: { type: Number, default: 0 },
+  lastActive: { type: Date },
+
+  // Device Info
+  deviceInfo: {
+    type: { type: String, default: 'Unknown' },
+    os: { type: String, default: 'Unknown' },
+    browser: { type: String, default: 'Unknown' },
+    browserVersion: { type: String, default: 'Unknown' },
+    resolution: { type: String },
+    language: { type: String },
+    timezone: { type: String }
+  },
+
+  // Location
+  location: {
+    country: { type: String },
+    state: { type: String },
+    city: { type: String },
+    ip: { type: String },
+    timezone: { type: String }
+  },
+
+  // Usage Stats
+  registrationMethod: { type: String, enum: ['email', 'google'], default: 'email' },
+  reportsGenerated: { type: Number, default: 0 },
+  imagesGenerated: { type: Number, default: 0 },
+  aiRequests: { type: Number, default: 0 },
+  uploads: { type: Number, default: 0 },
+  totalTokens: { type: Number, default: 0 },
+  totalApiCost: { type: Number, default: 0 },
+  paymentStatus: { type: String, default: 'unpaid' }
+
 }, { timestamps: true });
 
 // Hash password before save

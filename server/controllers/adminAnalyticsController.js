@@ -3,198 +3,262 @@ const MeetingTopic = require('../models/MeetingTopic');
 const Image = require('../models/Image');
 const User = require('../models/User');
 const ErrorLog = require('../models/ErrorLog');
+const Project = require('../models/Project');
 const mongoose = require('mongoose');
 
-// Helper for date ranges
-const getDateRange = () => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const thisWeek = new Date(today);
-  thisWeek.setDate(today.getDate() - 7);
-  const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  return { today, thisWeek, thisMonth };
-};
-
-// @desc    Get Analytics Overview
-// @route   GET /api/admin/analytics/overview
-const getOverview = async (req, res) => {
+// @desc    Get complete AI Analytics
+// @route   GET /api/admin/analytics/full
+const getCompleteAnalytics = async (req, res) => {
   try {
-    const { today, thisWeek, thisMonth } = getDateRange();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const thisWeek = new Date(today);
+    thisWeek.setDate(today.getDate() - 7);
+    const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 29);
 
     const [
       costStats,
       imageStats,
-      userStats,
-      recentRequests,
-      errorCount
+      errorStats,
+      costTrends,
+      providerStats,
+      modelStats,
+      topUsers,
+      userActivity
     ] = await Promise.all([
+      // 1. Overall Cost & KPI Stats
       ApiCostTracking.aggregate([
-        { 
-          $group: { 
-            _id: null, 
-            totalCost: { $sum: '$estimatedCostUsd' },
-            totalTokens: { $sum: '$totalTokens' },
-            totalRequests: { $sum: 1 },
-            avgGenTime: { $avg: '$generationTimeMs' },
-            successCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } }
-          } 
+        {
+          $facet: {
+            overall: [
+              {
+                $group: {
+                  _id: null,
+                  totalRequests: { $sum: 1 },
+                  totalCost: { $sum: '$estimatedCostUsd' },
+                  avgGenTime: { $avg: '$generationTimeMs' },
+                  fastestRequest: { $min: { $cond: [{ $gt: ['$generationTimeMs', 0] }, '$generationTimeMs', null] } },
+                  slowestRequest: { $max: '$generationTimeMs' },
+                  totalTokens: { $sum: '$totalTokens' },
+                  totalPromptTokens: { $sum: '$inputTokens' },
+                  totalCompletionTokens: { $sum: '$outputTokens' },
+                  highestTokenRequest: { $max: '$totalTokens' }
+                }
+              }
+            ],
+            today: [{ $match: { createdAt: { $gte: today } } }, { $group: { _id: null, cost: { $sum: '$estimatedCostUsd' }, requests: { $sum: 1 } } }],
+            week: [{ $match: { createdAt: { $gte: thisWeek } } }, { $group: { _id: null, cost: { $sum: '$estimatedCostUsd' }, requests: { $sum: 1 } } }],
+            month: [{ $match: { createdAt: { $gte: thisMonth } } }, { $group: { _id: null, cost: { $sum: '$estimatedCostUsd' }, requests: { $sum: 1 } } }]
+          }
         }
       ]),
+      // 2. Images Stats
       Image.aggregate([
-        { $group: { _id: null, totalImages: { $sum: 1 } } }
-      ]),
-      User.countDocuments(),
-      ApiCostTracking.aggregate([
-        { 
+        {
           $facet: {
+            overall: [{ $count: 'count' }],
             today: [{ $match: { createdAt: { $gte: today } } }, { $count: 'count' }],
             week: [{ $match: { createdAt: { $gte: thisWeek } } }, { $count: 'count' }],
             month: [{ $match: { createdAt: { $gte: thisMonth } } }, { $count: 'count' }]
           }
         }
       ]),
-      ErrorLog.countDocuments()
+      // 3. Error Analytics
+      ErrorLog.aggregate([
+        {
+          $group: {
+            _id: '$type',
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+      // 4. Trends (Last 30 Days)
+      ApiCostTracking.aggregate([
+        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            cost: { $sum: '$estimatedCostUsd' },
+            requests: { $sum: 1 },
+            avgTokens: { $avg: '$totalTokens' }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+      // 5. Provider Usage & Performance
+      ApiCostTracking.aggregate([
+        {
+          $group: {
+            _id: '$provider',
+            totalRequests: { $sum: 1 },
+            totalCost: { $sum: '$estimatedCostUsd' },
+            avgGenTimeMs: { $avg: '$generationTimeMs' },
+            avgTokens: { $avg: '$totalTokens' },
+            successCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } },
+            lastUsed: { $max: '$createdAt' }
+          }
+        },
+        { $sort: { totalRequests: -1 } }
+      ]),
+      // 6. Model Usage
+      ApiCostTracking.aggregate([
+        {
+          $group: {
+            _id: '$model',
+            totalRequests: { $sum: 1 },
+            totalTokens: { $sum: '$totalTokens' },
+            totalCost: { $sum: '$estimatedCostUsd' },
+            successCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } }
+          }
+        },
+        { $sort: { totalRequests: -1 } }
+      ]),
+      // 7. Top Users
+      ApiCostTracking.aggregate([
+        {
+          $group: {
+            _id: '$userId',
+            totalRequests: { $sum: 1 },
+            totalCost: { $sum: '$estimatedCostUsd' },
+            lastActive: { $max: '$createdAt' }
+          }
+        },
+        { $sort: { totalRequests: -1 } },
+        { $limit: 10 }
+      ]),
+      // 8. User Activity
+      Project.aggregate([
+        {
+          $facet: {
+            dau: [{ $match: { createdAt: { $gte: today } } }, { $group: { _id: '$userId' } }, { $count: 'count' }],
+            wau: [{ $match: { createdAt: { $gte: thisWeek } } }, { $group: { _id: '$userId' } }, { $count: 'count' }],
+            mau: [{ $match: { createdAt: { $gte: thisMonth } } }, { $group: { _id: '$userId' } }, { $count: 'count' }]
+          }
+        }
+      ])
     ]);
 
-    const stats = costStats[0] || { totalCost: 0, totalTokens: 0, totalRequests: 0, avgGenTime: 0, successCount: 0 };
-    const successRate = stats.totalRequests > 0 ? ((stats.successCount / stats.totalRequests) * 100).toFixed(2) : 100;
-    
+    // Format KPIs
+    const overall = costStats[0]?.overall[0] || {};
+    const kpis = {
+      totalRequests: {
+        allTime: overall.totalRequests || 0,
+        today: costStats[0]?.today[0]?.requests || 0,
+        week: costStats[0]?.week[0]?.requests || 0,
+        month: costStats[0]?.month[0]?.requests || 0
+      },
+      apiCost: {
+        allTime: overall.totalCost || 0,
+        today: costStats[0]?.today[0]?.cost || 0,
+        week: costStats[0]?.week[0]?.cost || 0,
+        month: costStats[0]?.month[0]?.cost || 0
+      },
+      images: {
+        allTime: imageStats[0]?.overall[0]?.count || 0,
+        today: imageStats[0]?.today[0]?.count || 0,
+        week: imageStats[0]?.week[0]?.count || 0,
+        month: imageStats[0]?.month[0]?.count || 0
+      },
+      generationTime: {
+        avg: overall.avgGenTime || 0,
+        fastest: overall.fastestRequest || 0,
+        slowest: overall.slowestRequest || 0
+      }
+    };
+
+    // Format Token Analytics
+    const tokenAnalytics = {
+      totalPromptTokens: overall.totalPromptTokens || 0,
+      totalCompletionTokens: overall.totalCompletionTokens || 0,
+      totalTokens: overall.totalTokens || 0,
+      avgTokensPerRequest: overall.totalRequests ? (overall.totalTokens / overall.totalRequests) : 0,
+      highestTokenRequest: overall.highestTokenRequest || 0
+    };
+
+    // Populate Top Users
+    const populatedTopUsers = await User.populate(topUsers, { path: '_id', select: 'name email plan totalDownloads' });
+    const formattedTopUsers = populatedTopUsers.map(u => ({
+      userId: u._id?._id,
+      name: u._id?.name || 'Unknown',
+      email: u._id?.email || 'N/A',
+      plan: u._id?.plan || 'N/A',
+      requests: u.totalRequests,
+      downloads: u._id?.totalDownloads || 0,
+      cost: u.totalCost,
+      lastActive: u.lastActive
+    }));
+
+    // Format Error Analytics
+    const failedRequests = providerStats.reduce((acc, p) => acc + (p.totalRequests - p.successCount), 0);
+    const errorsBreakdown = errorStats.reduce((acc, e) => {
+      acc[e._id || 'unknown'] = e.count;
+      return acc;
+    }, {});
+    const errorAnalytics = {
+      failedRequests,
+      successRate: overall.totalRequests > 0 ? (((overall.totalRequests - failedRequests) / overall.totalRequests) * 100).toFixed(2) : 100,
+      breakdown: errorsBreakdown
+    };
+
+    // Format User Activity
+    const activity = {
+      dau: userActivity[0]?.dau[0]?.count || 0,
+      wau: userActivity[0]?.wau[0]?.count || 0,
+      mau: userActivity[0]?.mau[0]?.count || 0
+    };
+
+    // Format Provider Performance
+    const providerPerformance = providerStats.map(p => ({
+      provider: p._id,
+      requests: p.totalRequests,
+      successRate: p.totalRequests > 0 ? ((p.successCount / p.totalRequests) * 100).toFixed(2) : 0,
+      avgResponseTime: p.avgGenTimeMs,
+      avgTokens: p.avgTokens,
+      avgCost: p.totalRequests > 0 ? (p.totalCost / p.totalRequests) : 0,
+      totalCost: p.totalCost,
+      lastUsed: p.lastUsed,
+      health: p.successCount / p.totalRequests > 0.9 ? 'Healthy' : 'Degraded'
+    }));
+
+    // Ensure 30 days of trends are mapped correctly
+    const trends = [];
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(thirtyDaysAgo);
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      const found = costTrends.find(c => c._id === dateStr);
+      trends.push({
+        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        rawDate: dateStr,
+        requests: found ? found.requests : 0,
+        cost: found ? found.cost : 0,
+        avgCost: found && found.requests > 0 ? (found.cost / found.requests) : 0,
+        avgTokens: found ? found.avgTokens : 0
+      });
+    }
+
     res.json({
       success: true,
       data: {
-        totalRequests: stats.totalRequests,
-        totalImages: imageStats[0]?.totalImages || 0,
-        totalTokens: stats.totalTokens,
-        totalCost: stats.totalCost.toFixed(4),
-        avgGenTimeMs: stats.avgGenTime ? stats.avgGenTime.toFixed(0) : 0,
-        successRate,
-        errorCount,
-        requestsToday: recentRequests[0]?.today[0]?.count || 0,
-        requestsWeek: recentRequests[0]?.week[0]?.count || 0,
-        requestsMonth: recentRequests[0]?.month[0]?.count || 0,
+        kpis,
+        trends,
+        providers: providerPerformance,
+        models: modelStats,
+        topUsers: formattedTopUsers,
+        tokens: tokenAnalytics,
+        errors: errorAnalytics,
+        activity
       }
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// @desc    Get Token Analytics
-// @route   GET /api/admin/analytics/tokens
-const getTokenAnalytics = async (req, res) => {
-  try {
-    const stats = await ApiCostTracking.aggregate([
-      {
-        $group: {
-          _id: '$userId',
-          totalTokens: { $sum: '$totalTokens' },
-          avgTokensPerRequest: { $avg: '$totalTokens' },
-          requestCount: { $sum: 1 }
-        }
-      },
-      { $sort: { totalTokens: -1 } },
-      { $limit: 10 }
-    ]);
-    
-    // Populate user names (efficiently using lookup or lean queries)
-    const populatedStats = await User.populate(stats, { path: '_id', select: 'name email' });
-    
-    res.json({ success: true, data: populatedStats });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// @desc    Get Provider Analytics
-// @route   GET /api/admin/analytics/providers
-const getProviderAnalytics = async (req, res) => {
-  try {
-    const stats = await ApiCostTracking.aggregate([
-      {
-        $group: {
-          _id: '$provider',
-          totalRequests: { $sum: 1 },
-          totalCost: { $sum: '$estimatedCostUsd' },
-          avgGenTimeMs: { $avg: '$generationTimeMs' },
-          successCount: { $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] } }
-        }
-      }
-    ]);
-    
-    const formattedStats = stats.map(s => ({
-      provider: s._id,
-      totalRequests: s.totalRequests,
-      totalCost: s.totalCost.toFixed(4),
-      avgGenTimeMs: s.avgGenTimeMs.toFixed(0),
-      successRate: ((s.successCount / s.totalRequests) * 100).toFixed(2)
-    }));
-    
-    res.json({ success: true, data: formattedStats });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// @desc    Get Topic Analytics
-// @route   GET /api/admin/analytics/topics
-const getTopicAnalytics = async (req, res) => {
-  try {
-    const stats = await MeetingTopic.aggregate([
-      {
-        $group: {
-          _id: '$topic',
-          frequency: { $sum: '$frequency' }
-        }
-      },
-      { $sort: { frequency: -1 } },
-      { $limit: 20 }
-    ]);
-    
-    res.json({ success: true, data: stats });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// @desc    Get Cost Trends (Last 7 Days)
-// @route   GET /api/admin/analytics/cost-trends
-const getCostTrends = async (req, res) => {
-  try {
-    const last7Days = [...Array(7)].map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      d.setHours(0,0,0,0);
-      return d;
-    }).reverse();
-
-    const stats = await ApiCostTracking.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: last7Days[0] }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
-          },
-          cost: { $sum: '$estimatedCostUsd' },
-          requests: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]);
-
-    res.json({ success: true, data: stats });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Analytics Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load analytics data' });
   }
 };
 
 module.exports = {
-  getOverview,
-  getTokenAnalytics,
-  getProviderAnalytics,
-  getTopicAnalytics,
-  getCostTrends
+  getCompleteAnalytics
 };

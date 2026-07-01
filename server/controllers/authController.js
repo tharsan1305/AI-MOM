@@ -4,11 +4,51 @@ const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const { sendEmail } = require('../utils/sendEmail');
 const { createNotification } = require('../utils/notificationHelper');
+const geoip = require('geoip-lite');
+const UAParser = require('ua-parser-js');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
+};
+
+const getClientTrackingData = (req) => {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip;
+  const userAgent = req.headers['user-agent'] || '';
+  
+  const parser = new UAParser(userAgent);
+  const uaResult = parser.getResult();
+  
+  let geo = null;
+  // If local development, provide a mock IP to avoid failures, or just let geoip fail gracefully
+  const normalizedIp = ip.includes('127.0.0.1') || ip.includes('::1') ? '8.8.8.8' : ip.split(',')[0]; 
+  
+  if (normalizedIp) {
+    geo = geoip.lookup(normalizedIp);
+  }
+
+  // Timezone might come from client via custom header, else fallback to geoip or default
+  const clientTz = req.headers['x-timezone'] || (geo ? geo.timezone : 'Unknown');
+
+  return {
+    deviceInfo: {
+      type: uaResult.device.type || 'desktop',
+      os: uaResult.os.name || 'Unknown',
+      browser: uaResult.browser.name || 'Unknown',
+      browserVersion: uaResult.browser.version || 'Unknown',
+      resolution: req.headers['x-resolution'] || 'Unknown',
+      language: req.headers['accept-language']?.split(',')[0] || 'Unknown',
+      timezone: clientTz
+    },
+    location: {
+      country: geo ? geo.country : 'Unknown',
+      state: geo ? geo.region : 'Unknown',
+      city: geo ? geo.city : 'Unknown',
+      ip: ip,
+      timezone: clientTz
+    }
+  };
 };
 
 // @desc    Register user
@@ -23,7 +63,19 @@ const register = async (req, res) => {
     if (existing)
       return res.status(400).json({ success: false, message: 'Email already registered' });
 
-    const user = await User.create({ name, email, password, lastLogin: Date.now() });
+    const trackingData = getClientTrackingData(req);
+
+    const user = await User.create({ 
+      name, 
+      email, 
+      password, 
+      lastLogin: Date.now(),
+      lastActive: Date.now(),
+      loginCount: 1,
+      registrationMethod: 'email',
+      deviceInfo: trackingData.deviceInfo,
+      location: trackingData.location
+    });
     const token = generateToken(user._id);
     
     // Notify admin via Sockets and DB
@@ -59,7 +111,14 @@ const login = async (req, res) => {
     if (!user || !(await user.comparePassword(password)))
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
 
+    const trackingData = getClientTrackingData(req);
+
     user.lastLogin = Date.now();
+    user.lastActive = Date.now();
+    user.loginCount = (user.loginCount || 0) + 1;
+    user.deviceInfo = trackingData.deviceInfo;
+    user.location = trackingData.location;
+
     await user.save({ validateBeforeSave: false });
 
     const token = generateToken(user._id);
@@ -85,15 +144,29 @@ const googleAuth = async (req, res) => {
     });
     const { name, email, picture, sub: googleId } = ticket.getPayload();
 
+    const trackingData = getClientTrackingData(req);
+
     let user = await User.findOne({ email });
     if (!user) {
-      user = await User.create({ name, email, avatar: picture, googleId });
+      user = await User.create({ 
+        name, 
+        email, 
+        avatar: picture, 
+        googleId,
+        registrationMethod: 'google',
+        loginCount: 0
+      });
     } else if (!user.googleId) {
       user.googleId = googleId;
       user.avatar = user.avatar || picture;
     }
     
     user.lastLogin = Date.now();
+    user.lastActive = Date.now();
+    user.loginCount = (user.loginCount || 0) + 1;
+    user.deviceInfo = trackingData.deviceInfo;
+    user.location = trackingData.location;
+
     await user.save({ validateBeforeSave: false });
 
     const token = generateToken(user._id);
@@ -103,6 +176,7 @@ const googleAuth = async (req, res) => {
       user: { _id: user._id, name: user.name, email: user.email, avatar: user.avatar, plan: user.plan },
     });
   } catch (error) {
+    console.error(error);
     res.status(401).json({ success: false, message: 'Google authentication failed' });
   }
 };

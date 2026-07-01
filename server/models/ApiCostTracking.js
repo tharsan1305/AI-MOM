@@ -13,6 +13,8 @@ const apiCostTrackingSchema = new mongoose.Schema({
   estimatedCostUsd: { type: Number, required: true },
   status: { type: String, enum: ['success', 'failed'], default: 'success' },
   errorDetails: { type: String },
+  feature: { type: String, default: 'general' },
+  requestType: { type: String, default: 'api_call' },
 }, { timestamps: true });
 
 module.exports = mongoose.model('ApiCostTracking', apiCostTrackingSchema);

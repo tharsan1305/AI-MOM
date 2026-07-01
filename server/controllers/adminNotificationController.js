@@ -41,4 +41,32 @@ const markAsRead = async (req, res) => {
   }
 };
 
-module.exports = { getNotifications, markAsRead };
+// @desc    Broadcast a new notification
+// @route   POST /api/admin/notifications/broadcast
+const createBroadcast = async (req, res) => {
+  try {
+    const { title, message, targetType, targetRoles, targetUsers } = req.body;
+    
+    if (!title || !message) {
+      return res.status(400).json({ success: false, message: 'Title and message are required' });
+    }
+
+    const notification = new Notification({
+      type: 'broadcast',
+      title,
+      message,
+      targetType: targetType || 'all',
+      targetRoles: targetRoles || [],
+      targetUsers: targetUsers || [],
+      isRead: false
+    });
+
+    await notification.save();
+
+    res.json({ success: true, notification, message: 'Broadcast sent successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { getNotifications, markAsRead, createBroadcast };

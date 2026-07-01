@@ -29,10 +29,7 @@ const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage'));
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
 const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
 const AdminPromptsPage = lazy(() => import('./pages/admin/AdminPromptsPage'));
-const AdminPlansPage = lazy(() => import('./pages/admin/AdminPlansPage'));
-const AdminPaymentsPage = lazy(() => import('./pages/admin/AdminPaymentsPage'));
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'));
-const AdminTemplatesPage = lazy(() => import('./pages/admin/AdminTemplatesPage'));
 const AdminApiProvidersPage = lazy(() => import('./pages/admin/AdminApiProvidersPage'));
 const AdminNotificationsPage = lazy(() => import('./pages/admin/AdminNotificationsPage'));
 const AdminAuditLogsPage = lazy(() => import('./pages/admin/AdminAuditLogsPage'));
@@ -101,12 +98,9 @@ function App() {
         }>
           <Route index element={<AdminDashboardPage />} />
           <Route path="analytics" element={<AdminAnalyticsPage />} />
-          <Route path="templates" element={<AdminTemplatesPage />} />
           <Route path="images" element={<AdminImagesPage />} />
           <Route path="users" element={<AdminUsersPage />} />
           <Route path="prompts" element={<AdminPromptsPage />} />
-          <Route path="plans" element={<AdminPlansPage />} />
-          <Route path="payments" element={<AdminPaymentsPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="api-providers" element={<AdminApiProvidersPage />} />
           <Route path="notifications" element={<AdminNotificationsPage />} />
