@@ -5,19 +5,13 @@ import { Settings, Save, AlertTriangle, Loader2 } from 'lucide-react';
 
 const AdminSettingsPage = () => {
   const [settings, setSettings] = useState({
-    defaultAiModel: 'gemini-1.5-flash',
-    maintenanceMode: false,
-    registrationEnabled: true,
-    paymentsEnabled: false,
-    rateLimiterEnabled: true,
-    featureFlags: {
-      enableIllustratedTemplates: true,
-      enablePdfExport: false
-    },
-    globalLimits: { 
-      defaultPromptLimitDaily: 3, 
-      maxUploadSizeMB: 10 
-    }
+    general: { websiteName: '', contactEmail: '', maintenanceMode: false, registrationEnabled: true },
+    ai: { defaultProvider: '', defaultModel: '', maxTokensPerRequest: 4000, globalRateLimitPerMinute: 60 },
+    auth: { jwtExpiryDays: 7, enableGoogleOAuth: true, passwordPolicy: { minLength: 8, requireUppercase: true, requireNumbers: true, requireSpecialChars: false } },
+    branding: { companyName: '', logoUrl: '', theme: 'light', primaryColor: '#6366f1' },
+    security: { sessionTimeoutMinutes: 120, maxLoginAttempts: 5, lockoutDurationMinutes: 15, requireEmailVerification: false },
+    storage: { maxUploadSizeMB: 10, allowedFileTypes: [], retentionDays: 30 },
+    backup: { autoBackupEnabled: true, backupFrequency: 'daily', retentionCount: 7 }
   });
   
   const [loading, setLoading] = useState(true);
@@ -62,12 +56,21 @@ const AdminSettingsPage = () => {
     }
   };
 
-  const handleLimitChange = (key, value) => {
-    setSettings(prev => ({ ...prev, globalLimits: { ...prev.globalLimits, [key]: Number(value) } }));
+  const handleChange = (category, key, value) => {
+    setSettings(prev => ({
+      ...prev,
+      [category]: { ...prev[category], [key]: value }
+    }));
   };
 
-  const handleFeatureFlagChange = (key, value) => {
-    setSettings(prev => ({ ...prev, featureFlags: { ...prev.featureFlags, [key]: value } }));
+  const handleNestedChange = (category, subCategory, key, value) => {
+    setSettings(prev => ({
+      ...prev,
+      [category]: { 
+        ...prev[category], 
+        [subCategory]: { ...prev[category][subCategory], [key]: value }
+      }
+    }));
   };
 
   if (loading) {
@@ -88,87 +91,99 @@ const AdminSettingsPage = () => {
         </div>
       </div>
 
-      {/* Feature Toggles */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-        <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Settings size={20} /> Platform Feature Toggles</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[
-            { id: 'maintenanceMode', label: 'Maintenance Mode', desc: 'Disables app access for non-admins' },
-            { id: 'rateLimiterEnabled', label: 'Global Rate Limiter', desc: 'Enforce API request limits to prevent abuse' },
-            { id: 'registrationEnabled', label: 'User Registration', desc: 'Allow new users to sign up' },
-            { id: 'paymentsEnabled', label: 'Payments Module', desc: 'Enable Stripe checkout and billing' }
-          ].map(toggle => (
-            <div key={toggle.id} className="flex items-start">
-              <div className="flex items-center h-5">
-                <input
-                  id={toggle.id}
-                  type="checkbox"
-                  checked={settings[toggle.id] || false}
-                  onChange={(e) => setSettings(prev => ({ ...prev, [toggle.id]: e.target.checked }))}
-                  className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
-                />
-              </div>
-              <div className="ml-3 text-sm">
-                <label htmlFor={toggle.id} className={`font-medium ${toggle.id === 'maintenanceMode' && settings[toggle.id] ? 'text-red-600' : 'text-slate-700 dark:text-slate-300'}`}>
-                  {toggle.label}
-                </label>
-                <p className="text-slate-500 text-xs mt-0.5">{toggle.desc}</p>
-              </div>
+      {/* Settings Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* General Settings */}
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Settings size={20} /> General</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Website Name</label>
+              <input type="text" value={settings.general?.websiteName || ''} onChange={(e) => handleChange('general', 'websiteName', e.target.value)} className="input-field" />
             </div>
-          ))}
-
-          {/* Nested Feature Flags */}
-          <div className="flex items-start">
-            <div className="flex items-center h-5">
-              <input
-                id="enableIllustratedTemplates"
-                type="checkbox"
-                checked={settings.featureFlags?.enableIllustratedTemplates || false}
-                onChange={(e) => handleFeatureFlagChange('enableIllustratedTemplates', e.target.checked)}
-                className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
-              />
+            <div>
+              <label className="block text-sm font-medium mb-1">Contact Email</label>
+              <input type="email" value={settings.general?.contactEmail || ''} onChange={(e) => handleChange('general', 'contactEmail', e.target.value)} className="input-field" />
             </div>
-            <div className="ml-3 text-sm">
-              <label htmlFor="enableIllustratedTemplates" className="font-medium text-slate-700 dark:text-slate-300">
-                Illustrated Templates
-              </label>
-              <p className="text-slate-500 text-xs mt-0.5">Enable the premium visual report template</p>
+            <div className="flex items-center gap-3 mt-4">
+              <input type="checkbox" checked={settings.general?.maintenanceMode || false} onChange={(e) => handleChange('general', 'maintenanceMode', e.target.checked)} className="w-5 h-5 text-primary-600 rounded" />
+              <label className="font-medium text-red-600">Maintenance Mode</label>
             </div>
-          </div>
-
-          <div className="flex items-start">
-            <div className="flex items-center h-5">
-              <input
-                id="enablePdfExport"
-                type="checkbox"
-                checked={settings.featureFlags?.enablePdfExport || false}
-                onChange={(e) => handleFeatureFlagChange('enablePdfExport', e.target.checked)}
-                className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
-              />
-            </div>
-            <div className="ml-3 text-sm">
-              <label htmlFor="enablePdfExport" className="font-medium text-slate-700 dark:text-slate-300">
-                PDF Export
-              </label>
-              <p className="text-slate-500 text-xs mt-0.5">Enable experimental PDF generation (Beta)</p>
+            <div className="flex items-center gap-3">
+              <input type="checkbox" checked={settings.general?.registrationEnabled || false} onChange={(e) => handleChange('general', 'registrationEnabled', e.target.checked)} className="w-5 h-5 text-primary-600 rounded" />
+              <label className="font-medium">Enable Registrations</label>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Global Limits */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-        <h3 className="text-lg font-bold mb-6">Global Default Limits</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Free User Daily Prompt Limit</label>
-            <input type="number" min="0" value={settings.globalLimits?.defaultPromptLimitDaily || 3} onChange={(e) => handleLimitChange('defaultPromptLimitDaily', e.target.value)} className="input-field" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Max Upload Size (MB)</label>
-            <input type="number" min="1" value={settings.globalLimits?.maxUploadSizeMB || 10} onChange={(e) => handleLimitChange('maxUploadSizeMB', e.target.value)} className="input-field" />
+        {/* AI Configuration */}
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Settings size={20} /> AI Configuration</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Default Provider</label>
+              <input type="text" value={settings.ai?.defaultProvider || ''} onChange={(e) => handleChange('ai', 'defaultProvider', e.target.value)} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Default Model</label>
+              <input type="text" value={settings.ai?.defaultModel || ''} onChange={(e) => handleChange('ai', 'defaultModel', e.target.value)} className="input-field" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Max Tokens / Req</label>
+                <input type="number" value={settings.ai?.maxTokensPerRequest || 4000} onChange={(e) => handleChange('ai', 'maxTokensPerRequest', Number(e.target.value))} className="input-field" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Rate Limit / Min</label>
+                <input type="number" value={settings.ai?.globalRateLimitPerMinute || 60} onChange={(e) => handleChange('ai', 'globalRateLimitPerMinute', Number(e.target.value))} className="input-field" />
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Security Settings */}
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Settings size={20} /> Security & Auth</h3>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Session Timeout (min)</label>
+              <input type="number" value={settings.security?.sessionTimeoutMinutes || 120} onChange={(e) => handleChange('security', 'sessionTimeoutMinutes', Number(e.target.value))} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Max Login Attempts</label>
+              <input type="number" value={settings.security?.maxLoginAttempts || 5} onChange={(e) => handleChange('security', 'maxLoginAttempts', Number(e.target.value))} className="input-field" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 mt-4">
+            <input type="checkbox" checked={settings.auth?.enableGoogleOAuth || false} onChange={(e) => handleChange('auth', 'enableGoogleOAuth', e.target.checked)} className="w-5 h-5 text-primary-600 rounded" />
+            <label className="font-medium">Enable Google OAuth</label>
+          </div>
+          <div className="flex items-center gap-3 mt-2">
+            <input type="checkbox" checked={settings.security?.requireEmailVerification || false} onChange={(e) => handleChange('security', 'requireEmailVerification', e.target.checked)} className="w-5 h-5 text-primary-600 rounded" />
+            <label className="font-medium">Require Email Verification</label>
+          </div>
+        </div>
+
+        {/* Storage Settings */}
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <h3 className="text-lg font-bold mb-6 flex items-center gap-2"><Settings size={20} /> Storage & Backups</h3>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Max Upload (MB)</label>
+              <input type="number" value={settings.storage?.maxUploadSizeMB || 10} onChange={(e) => handleChange('storage', 'maxUploadSizeMB', Number(e.target.value))} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Retention (Days)</label>
+              <input type="number" value={settings.storage?.retentionDays || 30} onChange={(e) => handleChange('storage', 'retentionDays', Number(e.target.value))} className="input-field" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 mt-4">
+            <input type="checkbox" checked={settings.backup?.autoBackupEnabled || false} onChange={(e) => handleChange('backup', 'autoBackupEnabled', e.target.checked)} className="w-5 h-5 text-primary-600 rounded" />
+            <label className="font-medium">Automated Database Backups</label>
+          </div>
+        </div>
+
       </div>
 
       {/* Audit Log Reason */}
