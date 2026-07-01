@@ -31,18 +31,30 @@ const updateSettings = async (req, res) => {
     // Capture before state for audit log
     const beforeValue = settings.toObject();
 
-    // Merge updates
-    if (updates.defaultAiModel !== undefined) settings.defaultAiModel = updates.defaultAiModel;
-    if (updates.maintenanceMode !== undefined) settings.maintenanceMode = updates.maintenanceMode;
-    if (updates.registrationEnabled !== undefined) settings.registrationEnabled = updates.registrationEnabled;
-    if (updates.paymentsEnabled !== undefined) settings.paymentsEnabled = updates.paymentsEnabled;
-    if (updates.rateLimiterEnabled !== undefined) settings.rateLimiterEnabled = updates.rateLimiterEnabled;
-    
-    if (updates.featureFlags) {
-      settings.featureFlags = { ...settings.featureFlags, ...updates.featureFlags };
+    // Merge updates deeply
+    if (updates.general) {
+      settings.general = { ...settings.general, ...updates.general };
     }
-    if (updates.globalLimits) {
-      settings.globalLimits = { ...settings.globalLimits, ...updates.globalLimits };
+    if (updates.ai) {
+      settings.ai = { ...settings.ai, ...updates.ai };
+    }
+    if (updates.auth) {
+      if (updates.auth.passwordPolicy) {
+        settings.auth.passwordPolicy = { ...settings.auth.passwordPolicy, ...updates.auth.passwordPolicy };
+      }
+      settings.auth = { ...settings.auth, ...updates.auth, passwordPolicy: settings.auth.passwordPolicy };
+    }
+    if (updates.branding) {
+      settings.branding = { ...settings.branding, ...updates.branding };
+    }
+    if (updates.security) {
+      settings.security = { ...settings.security, ...updates.security };
+    }
+    if (updates.storage) {
+      settings.storage = { ...settings.storage, ...updates.storage };
+    }
+    if (updates.backup) {
+      settings.backup = { ...settings.backup, ...updates.backup };
     }
 
     await settings.save();
